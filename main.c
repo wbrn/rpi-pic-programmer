@@ -17,6 +17,7 @@ int main(int argc, char const *argv[])
     setup_io();
     enter_program_mode();
     int x = read_device_id();
+    read_config_registers();
     exit_program_mode();
 
     return 0;

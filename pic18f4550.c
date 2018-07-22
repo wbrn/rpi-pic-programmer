@@ -24,18 +24,6 @@
 void goto_mem_location(uint32_t data);
 void send_cmd(uint8_t cmd);
 
-void delayMicrosecondsHard (unsigned int howLong)
-{
-   struct timeval tNow, tLong, tEnd ;
-
-   gettimeofday (&tNow, NULL) ;
-   tLong.tv_sec  = howLong / 1000000 ;
-   tLong.tv_usec = howLong % 1000000 ;
-   timeradd (&tNow, &tLong, &tEnd) ;
-
-   while (timercmp (&tNow, &tEnd, <))
-     gettimeofday (&tNow, NULL) ;
-}
 
 /**
  * Implementation Header File functions.
@@ -50,20 +38,20 @@ void setup_io() {
 }
 
 void enter_program_mode() {
-    delayMicrosecondsHard(1000);
+    delayMicroseconds(1000);
     digitalWrite(DEFAULT_PIC_PGM, HIGH);
-    delayMicrosecondsHard(DELAY_P15);
+    delayMicroseconds(DELAY_P15);
     digitalWrite(DEFAULT_PIC_MCLR, HIGH);;
-    delayMicrosecondsHard(DELAY_P12);
+    delayMicroseconds(DELAY_P12);
     digitalWrite(DEFAULT_PIC_DOUT, HIGH);
 }
 
 void exit_program_mode() {
     digitalWrite(DEFAULT_PIC_CLK, LOW);			/* stop clock on PGC */
 	digitalWrite(DEFAULT_PIC_DOUT, LOW);			/* clear data pin PGD */
-	delayMicrosecondsHard(DELAY_P16);	/* wait P16 */
+	delayMicroseconds(DELAY_P16);	/* wait P16 */
 	digitalWrite(DEFAULT_PIC_MCLR, LOW);			/* remove VDD from MCLR pin */
-	delayMicrosecondsHard(DELAY_P18);	/* wait (at least) P17 */
+	delayMicroseconds(DELAY_P18);	/* wait (at least) P17 */
     digitalWrite(DEFAULT_PIC_PGM, LOW);
 }
 
@@ -75,23 +63,23 @@ uint16_t read_data(void) {
 
 	for (i = 0; i < 8; i++) {
 		digitalWrite(DEFAULT_PIC_CLK, HIGH);
-		delayMicrosecondsHard(DELAY_P2B);
+		delayMicroseconds(DELAY_P2B);
 		digitalWrite(DEFAULT_PIC_CLK, LOW);
-		delayMicrosecondsHard(DELAY_P2A);
+		delayMicroseconds(DELAY_P2A);
 	}
 
-	delayMicrosecondsHard(DELAY_P6);	/* wait for the data... */
+	delayMicroseconds(DELAY_P6);	/* wait for the data... */
 
 	for (i = 0; i < 8; i++) {
 		digitalWrite(DEFAULT_PIC_CLK, HIGH);
-		delayMicrosecondsHard(DELAY_P14);	/* Wait for data to be valid */
+		delayMicroseconds(DELAY_P14);	/* Wait for data to be valid */
 		data |= (digitalRead(DEFAULT_PIC_DIN) & 0x00000001 ) << i;
-		delayMicrosecondsHard(DELAY_P2B);
+		delayMicroseconds(DELAY_P2B);
 		digitalWrite(DEFAULT_PIC_CLK, LOW);
-		delayMicrosecondsHard(DELAY_P2A);
+		delayMicroseconds(DELAY_P2A);
 	}
 
-	delayMicrosecondsHard(DELAY_P5A);
+	delayMicroseconds(DELAY_P5A);
 
 	return data;
 }
@@ -107,12 +95,12 @@ void write_data(uint16_t data){
 		else
 			digitalWrite(DEFAULT_PIC_DOUT, LOW);
 
-		delayMicrosecondsHard(DELAY_P2B);	/* Setup time */
+		delayMicroseconds(DELAY_P2B);	/* Setup time */
 		digitalWrite(DEFAULT_PIC_CLK, LOW);
-		delayMicrosecondsHard(DELAY_P2A);	/* Hold time */
+		delayMicroseconds(DELAY_P2A);	/* Hold time */
 	}
 	digitalWrite(DEFAULT_PIC_DOUT, LOW);
-	delayMicrosecondsHard(DELAY_P5A);
+	delayMicroseconds(DELAY_P5A);
 }
 
 int read_device_id() {
@@ -130,7 +118,7 @@ int read_device_id() {
     id2 = read_data();
 	id = ( id2 << 8) | id;
 
-    printf("Device_id read as: %x\n", id);
+    printf("Device_id read as: 0x%x\n", id);
 	return 0x1207 == id;
 }
 
@@ -164,12 +152,12 @@ void send_cmd(uint8_t cmd)
             digitalWrite(DEFAULT_PIC_DOUT, HIGH);
 		else
 			digitalWrite(DEFAULT_PIC_DOUT, LOW);
-		delayMicrosecondsHard(DELAY_P2B);	/* Setup time */
+		delayMicroseconds(DELAY_P2B);	/* Setup time */
 		digitalWrite(DEFAULT_PIC_CLK, LOW);
-		delayMicrosecondsHard(DELAY_P2A);	/* Hold time */
+		delayMicroseconds(DELAY_P2A);	/* Hold time */
 	}
 	digitalWrite(DEFAULT_PIC_DOUT, LOW);
-	delayMicrosecondsHard(DELAY_P5);
+	delayMicroseconds(DELAY_P5);
 }
 
 void goto_mem_location(uint32_t data)
@@ -189,4 +177,21 @@ void goto_mem_location(uint32_t data)
 	write_data( 0x0E00 | (data & 0x000000FF) );		/* MOVLW Addr[7:0] */
 	send_cmd(COMM_CORE_INSTRUCTION);
 	write_data(0x6EF6);					/* MOVWF TBLPTRL */
+}
+
+void read_config_registers() {
+    uint16_t id = -1;
+    uint16_t id2 = -1;
+	int found = 0;
+
+	goto_mem_location(0x300000);
+
+	for(int i = 1; i <= 7; i++) {
+		send_cmd(COMM_TABLE_READ_POST_INC);
+		id = read_data();
+		send_cmd(COMM_TABLE_READ_POST_INC);
+		id2 = read_data();
+		id = ( id2 << 8) | id;
+		printf("Config_%d read as: 0x%04x\n", i, id);
+	}
 }

@@ -50,5 +50,6 @@ void dump_configuration_registers(void);
 void read1(char *outfile, uint32_t start, uint32_t count);
 void write1(char *infile);
 uint8_t blank_check(void);
+void read_config_registers();
 
 #endif
